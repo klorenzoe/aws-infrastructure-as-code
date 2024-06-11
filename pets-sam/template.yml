@@ -1,0 +1,83 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: >-
+  Pets infrastructure
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 120
+    MemorySize: 128
+    Environment:
+      Variables:
+        ENV: !Ref Environment
+        REGION_NAME: !Ref AWS::Region
+        DEBUG: true
+    Tags:
+      Environment: !Ref Environment
+
+Resources:
+  PetsEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: PetsEventBus
+
+  CatLoversFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub CatLoversFuntion
+      Description: >-
+        Draw a cat
+      Handler: lambda.handler
+      CodeUri: functions/cat-lovers
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - events:PutEvents
+            Resource: !GetAtt PetsEventBus.Arn
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref PetsEventBus
+            Pattern:
+              detail-type:
+                - cat
+
+  DogLoversFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub DogLoversFuntion
+      Description: >-
+        Draw a dog
+      Handler: lambda.handler
+      CodeUri: functions/dog-lovers
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - events:PutEvents
+            Resource: !GetAtt PetsEventBus.Arn
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref PetsEventBus
+            Pattern:
+              detail-type:
+                - dog
